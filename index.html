@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>內科部課程滿意度調查</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Permanent+Marker&display=swap" rel="stylesheet">
+<script>
+/* ============================================================
+   設定區
+   ============================================================ */
+const CONFIG = {
+  // 部署 Apps Script 後，把網頁應用程式網址貼在這裡；留空 = 展示模式（不送出，只顯示結果）
+  GAS_URL: "",
+  // 受訓月份自動判斷：每月 OPEN_DAY 日（含）以後 → 預設「本月」；之前 → 預設「上個月」
+  OPEN_DAY: 15,
+  // 受訓月份下拉選單可往回選幾個月（補填用）
+  MONTHS_BACK: 6,
+  // 次專科選項
+  SUBSPECIALTIES: ["一般內科","全人醫療科","心臟內科","胸腔內科","胃腸肝膽科","腎臟科","感染科","血液腫瘤科","神經內科","內分泌新陳代謝科","風濕免疫科"],
+  ROLES: ["PGY1","PGY2","住院醫師","外訓學員"],
+};
+</script>
+<style>
+:root{
+  --navy:#0E2A5C; --blue:#1F5BB8; --sky:#5C9BE6; --orange:#F2711C; --red:#E03A26; --sun:#FFB347;
+  --white:#FFFFFF; --cloud:#F4F7FC; --line:#0E2A5C; --muted:#5B6B86;
+  --s1:#C8372D; --s2:#E8792F; --s3:#9AA6B8; --s4:#4E8FDB; --s5:#1F5BB8;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:"Noto Sans TC",system-ui,sans-serif;color:var(--navy);min-height:100vh;padding:0 16px 120px;
+  background:
+    radial-gradient(ellipse 80% 40% at 80% 0%, rgba(255,179,71,.55), transparent 60%),
+    linear-gradient(180deg, #F04E23 0%, #F2711C 22%, #F9A04B 40%, #FBD9B4 58%, #E9F0FA 75%, #DCE7F7 100%);
+  background-attachment:fixed;
+}
+.waves{position:fixed;left:0;right:0;bottom:0;height:140px;pointer-events:none;z-index:0}
+.wrap{max-width:820px;margin:0 auto;position:relative;z-index:1}
+
+/* ---------- Hero ---------- */
+.hero{padding:30px 0 26px;text-align:center;position:relative}
+.kicker{display:inline-block;background:var(--navy);color:#fff;font-weight:900;font-size:14px;letter-spacing:3px;
+  padding:6px 18px;border-radius:4px;transform:rotate(-2deg);box-shadow:4px 4px 0 var(--red)}
+.en{font-family:"Permanent Marker",cursive;color:#fff;font-size:clamp(30px,7vw,52px);line-height:1;margin:16px 0 4px;
+  letter-spacing:1px;text-shadow:3px 3px 0 var(--navy), -1px -1px 0 var(--navy), 1px -1px 0 var(--navy), -1px 1px 0 var(--navy)}
+.brush{position:relative;display:inline-block;margin-top:6px;padding:6px 26px 12px}
+.brush::before{content:"";position:absolute;inset:6px -6px 0;background:var(--navy);transform:skewX(-8deg) rotate(-1.5deg);
+  border-radius:6px 30px 8px 24px;clip-path:polygon(2% 8%,98% 0,100% 30%,97% 62%,100% 100%,4% 94%,0 60%,3% 30%)}
+.brush h1{position:relative;margin:0;font-weight:900;font-size:clamp(38px,9.5vw,72px);letter-spacing:4px;color:#fff;
+  font-style:italic;transform:skewX(-6deg);text-shadow:4px 4px 0 var(--red)}
+.tagline{display:inline-block;margin-top:12px;background:var(--red);color:#fff;font-weight:900;font-size:16px;letter-spacing:4px;
+  padding:4px 16px;border:2px solid #fff;border-radius:4px;transform:rotate(1.5deg)}
+.month-pill{position:absolute;top:22px;left:0;background:#fff;color:var(--navy);border:3px solid var(--navy);border-radius:999px;
+  padding:6px 14px;font-weight:900;font-size:14px;box-shadow:3px 3px 0 var(--navy)}
+@media (max-width:560px){ .month-pill{position:static;display:inline-block;margin-bottom:14px} }
+
+/* ---------- Card ---------- */
+.card{background:var(--white);border:3px solid var(--navy);border-radius:18px;box-shadow:7px 7px 0 var(--navy);
+  padding:24px clamp(16px,4vw,32px);position:relative;overflow:hidden}
+.card + .card{margin-top:28px}
+.card::after{content:"";position:absolute;right:-30px;top:-30px;width:110px;height:110px;border-radius:50%;
+  background:radial-gradient(circle, rgba(242,113,28,.18), transparent 70%)}
+.sec-head{display:flex;align-items:center;gap:12px;margin:0 0 6px;flex-wrap:wrap}
+.no{font-family:"Permanent Marker",cursive;font-size:34px;line-height:1;color:#fff;background:var(--orange);border:3px solid var(--navy);
+  border-radius:10px;padding:4px 10px 2px;transform:rotate(-4deg);box-shadow:3px 3px 0 var(--navy)}
+.sec-head h2{margin:0;font-size:21px;font-weight:900;color:var(--navy)}
+.sec-desc{margin:0 0 16px;color:var(--muted);font-size:14px}
+
+/* ---------- Questions ---------- */
+.q{border:2px solid #D3DDEE;border-radius:14px;padding:14px;margin-bottom:12px;background:var(--cloud);transition:border-color .15s, background .15s}
+.q.done{border-color:var(--blue);background:#fff}
+.q.err{border-color:var(--red);box-shadow:0 0 0 3px rgba(224,58,38,.18)}
+.q-title{display:flex;gap:10px;align-items:flex-start;font-weight:700;font-size:16px;line-height:1.5;margin-bottom:10px}
+.q-title small{display:block;font-weight:500;color:var(--muted);font-size:13px;line-height:1.5;margin-top:2px}
+.tagno{flex:none;background:var(--navy);color:#fff;font-weight:900;font-size:12px;min-width:32px;text-align:center;border-radius:6px;padding:3px 6px;margin-top:2px}
+.req{color:var(--red)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips label{position:relative}
+.chips input{position:absolute;opacity:0;pointer-events:none}
+.chips span{display:inline-block;padding:7px 14px;border:2px solid var(--navy);border-radius:999px;background:#fff;font-weight:700;font-size:15px;cursor:pointer;user-select:none}
+.chips span:hover{background:#E6EEFB}
+.chips input:checked + span{background:var(--blue);color:#fff;box-shadow:2px 2px 0 var(--navy)}
+.chips input:focus-visible + span{outline:3px solid var(--orange);outline-offset:2px}
+
+/* 1–10 量表 */
+.scale{display:grid;grid-template-columns:repeat(10,1fr);gap:5px}
+.scale label{position:relative}
+.scale input{position:absolute;opacity:0;pointer-events:none}
+.scale span{display:grid;place-items:center;height:40px;border:2px solid var(--navy);border-radius:10px;background:#fff;font-weight:900;font-size:16px;
+  cursor:pointer;user-select:none;transition:transform .08s;font-variant-numeric:tabular-nums}
+.scale span:hover{background:#E6EEFB}
+.scale input:checked + span{color:#fff;transform:translateY(-2px);box-shadow:0 3px 0 var(--navy)}
+.scale input[data-band="5"]:checked + span{background:var(--s5)}
+.scale input[data-band="4"]:checked + span{background:var(--s4)}
+.scale input[data-band="3"]:checked + span{background:var(--s3)}
+.scale input[data-band="2"]:checked + span{background:var(--s2)}
+.scale input[data-band="1"]:checked + span{background:var(--s1)}
+.scale input:focus-visible + span{outline:3px solid var(--orange);outline-offset:2px}
+.bands{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:6px}
+.bands div{font-size:11px;font-weight:700;text-align:center;border-top:3px solid;padding-top:3px;color:var(--muted);white-space:nowrap}
+.bands div:nth-child(1){border-color:var(--s5)}.bands div:nth-child(2){border-color:var(--s4)}.bands div:nth-child(3){border-color:var(--s3)}
+.bands div:nth-child(4){border-color:var(--s2)}.bands div:nth-child(5){border-color:var(--s1)}
+.picked{font-size:13px;font-weight:700;color:var(--blue);margin-left:auto;white-space:nowrap}
+@media (max-width:480px){
+  .scale{gap:3px}.scale span{height:36px;font-size:14px;border-radius:8px}
+  .bands{gap:3px}.bands div{font-size:10px}
+}
+
+input[type=text],textarea,select{width:100%;font:inherit;font-size:16px;border:2px solid var(--navy);border-radius:10px;padding:10px 12px;background:#fff;color:var(--navy)}
+select{font-weight:700}
+textarea{min-height:96px;resize:vertical}
+input[type=text]:focus,textarea:focus,select:focus{outline:none;box-shadow:3px 3px 0 var(--orange)}
+.hint{font-size:13px;color:var(--muted);margin-top:6px}
+.need{display:none;margin-top:8px;font-size:13px;font-weight:700;color:var(--red)}
+.q.must .need{display:block}
+
+/* ---------- Progress ---------- */
+.progress{position:sticky;top:0;z-index:5;margin:0 -16px 0;padding:14px 16px 10px;background:rgba(14,42,92,.92);backdrop-filter:blur(4px)}
+.track{position:relative;height:12px;background:rgba(255,255,255,.25);border-radius:999px;max-width:820px;margin:0 auto}
+.fill{height:100%;background:linear-gradient(90deg,var(--orange),var(--sun));border-radius:999px;width:0;transition:width .3s}
+.ptxt{max-width:820px;margin:6px auto 0;display:flex;justify-content:space-between;color:#fff;font-weight:900;font-size:13px;letter-spacing:1px}
+
+/* ---------- Submit ---------- */
+.submit-bar{text-align:center;margin-top:30px}
+.btn{font:inherit;font-weight:900;font-size:22px;letter-spacing:4px;color:#fff;background:var(--red);border:3px solid var(--navy);
+  border-radius:14px;padding:14px 46px;cursor:pointer;box-shadow:6px 6px 0 var(--navy);transition:transform .08s}
+.btn:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 var(--navy)}
+.foot{text-align:center;color:var(--navy);font-weight:900;font-size:13px;margin-top:24px;letter-spacing:1px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(120px);background:var(--navy);color:#fff;
+  padding:12px 20px;border-radius:10px;font-weight:700;transition:transform .25s;z-index:20;max-width:90vw}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.done-screen{display:none;text-align:center;padding:40px 10px}
+.done-screen .stamp{display:inline-block;border:5px solid var(--red);color:var(--red);font-weight:900;font-size:40px;padding:8px 24px;border-radius:12px;
+  transform:rotate(-8deg);letter-spacing:6px;margin-bottom:18px}
+.done-screen p{font-size:17px;font-weight:700;line-height:1.8}
+pre.demo{text-align:left;background:var(--cloud);border:2px solid var(--navy);border-radius:10px;padding:12px;font-size:12px;overflow:auto;max-height:280px}
+</style>
+</head>
+<body>
+<svg class="waves" viewBox="0 0 1440 140" preserveAspectRatio="none" aria-hidden="true">
+  <path d="M0,70 C180,20 300,110 480,70 C660,30 780,110 960,70 C1140,30 1260,100 1440,60 L1440,140 L0,140 Z" fill="#5C9BE6" opacity=".55"/>
+  <path d="M0,95 C200,55 320,130 520,95 C720,60 840,130 1040,95 C1200,68 1320,120 1440,92 L1440,140 L0,140 Z" fill="#1F5BB8" opacity=".85"/>
+  <path d="M0,118 C240,95 380,140 600,118 C820,96 960,140 1180,118 C1300,106 1380,128 1440,116 L1440,140 L0,140 Z" fill="#0E2A5C"/>
+</svg>
+
+<div class="progress" id="progress">
+  <div class="track"><div class="fill" id="fill"></div></div>
+  <div class="ptxt"><span>填答進度</span><span id="ptxt">0 / 0</span></div>
+</div>
+
+<div class="wrap">
+  <header class="hero">
+    <div class="month-pill" id="monthPill">—</div>
+    <div class="kicker">內科部 × 教學部</div>
+    <div class="en">Course Feedback</div>
+    <div class="brush"><h1>課程滿意度</h1></div><br>
+    <div class="tagline">你的聲音・讓教學更好</div>
+  </header>
+
+  <form id="form" novalidate>
+  <section class="card">
+    <div class="sec-head"><div class="no">01</div><h2>基本資料</h2></div>
+    <p class="sec-desc">姓名僅作資料佐證，不會透露給任何授課教師，請放心作答。</p>
+    <div class="q" data-q="name">
+      <div class="q-title"><span>姓名 <span class="req">*</span></span></div>
+      <input type="text" name="name" autocomplete="name" placeholder="請輸入您的姓名">
+    </div>
+    <div class="q" data-q="role">
+      <div class="q-title"><span>職級 <span class="req">*</span></span></div>
+      <div class="chips" id="roleOpts"></div>
+    </div>
+    <div class="q" data-q="month">
+      <div class="q-title"><span>受訓月份 <span class="req">*</span><small>已自動帶入；若是補填之前月份，請自行切換</small></span></div>
+      <select name="month" id="monthSel"></select>
+    </div>
+    <div class="q" data-q="sub">
+      <div class="q-title"><span>當月受訓次專科 <span class="req">*</span></span></div>
+      <div class="chips" id="subOpts"></div>
+    </div>
+  </section>
+
+  <div id="sections"></div>
+
+  <section class="card">
+    <div class="sec-head"><div class="no" id="lastNo">05</div><h2>推薦與建議</h2></div>
+    <div class="q" data-q="teacher">
+      <div class="q-title"><span>推薦科優良臨床教師<small>可填多位，以頓號分隔</small></span></div>
+      <input type="text" name="teacher" placeholder="例如：王小明醫師、陳大華醫師">
+    </div>
+    <div class="q" data-q="reason">
+      <div class="q-title"><span>推薦理由</span></div>
+      <textarea name="reason" placeholder="這位老師哪裡讓你印象深刻？"></textarea>
+    </div>
+    <div class="q" data-q="suggest" id="suggestQ">
+      <div class="q-title"><span>建議<small>針對低於「不滿意」(含) 之項次，請提出具體描述以作為改善之依據</small></span></div>
+      <textarea name="suggest" placeholder="具體的描述能幫助我們改善"></textarea>
+      <div class="need">⚠️ 您有項目給了 4 分（含）以下，請在這裡寫下具體原因，幫助我們改善。</div>
+    </div>
+  </section>
+
+  <div class="submit-bar"><button class="btn" type="submit" id="submitBtn">送出問卷 ➜</button></div>
+  </form>
+
+  <section class="card done-screen" id="doneScreen">
+    <div class="stamp">已送達</div>
+    <p>感謝您的回饋！<br>我們會持續改善內科部的教學與學習環境。</p>
+    <div id="demoOut"></div>
+  </section>
+
+  <div class="foot">奇美醫院教學部●內科部</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------------- 題目：欄名與原 Forms 匯出一致，方便與歷史資料合併 ---------------- */
+const SECTIONS = [
+  { title:"大內科與學習指引", items:[
+    ["大內科學術活動(每週二)", "大內科學術活動", "每週二"],
+    ["學習指引-能提供orientation package，清楚說明當月學習目標、工作環境、課程安排、需繳交表單與作業，或可提供之支援等。", "學習指引", "能提供 orientation package，清楚說明當月學習目標、工作環境、課程安排、需繳交表單與作業，或可提供之支援等"],
+  ]},
+  { title:"次專科學術活動", items:[
+    ["次專科學術活動-Morning Meeting", "Morning Meeting"],
+    ["次專科學術活動-跨專科及跨領域之教育活動", "跨專科及跨領域之教育活動"],
+    ["次專科學術活動-Morbidity、Mortality、14天再入院研討會", "Morbidity、Mortality、14天再入院研討會"],
+    ["次專科學術活動-臨床案例討論會", "臨床案例討論會"],
+    ["次專科學術活動-實證醫學教學討論會", "實證醫學教學討論會"],
+    ["次專科學術活動-每週一次迴診教學(全人照護)", "每週一次迴診教學", "全人照護"],
+    ["次專科學術活動-六大核心能力教學", "六大核心能力教學"],
+    ["次專科學術活動-醫學影像及心電圖教學", "醫學影像及心電圖教學"],
+    ["次專科學術活動-門診教學", "門診教學"],
+    ["次專科學術活動-科內獨特性教學課程(介入性教學、內視鏡、血液抹片及骨髓抹片判讀、關節穿刺教學)", "科內獨特性教學課程", "介入性教學、內視鏡、血液抹片及骨髓抹片判讀、關節穿刺教學"],
+  ]},
+  { title:"院內課程與學習環境", items:[
+    ["院內課程-專業倫理、醫病溝通、實證醫學、感染控制等及其它醫療品質相關學習課程", "院內課程", "專業倫理、醫病溝通、實證醫學、感染控制等及其它醫療品質相關學習課程"],
+    ["工作量學習機會-病人照護量、值班數、報告數量之調配", "工作量學習機會", "病人照護量、值班數、報告數量之調配"],
+    ["學習環境-辦公室/值班室/討論室.等教育空間與設施", "學習環境", "辦公室／值班室／討論室等教育空間與設施"],
+    ["其他-長期導師能給予教學及生活上的協助與輔導；行政人員能即時處理所遭遇的問題", "導師與行政支援", "長期導師能給予教學及生活上的協助與輔導；行政人員能即時處理所遭遇的問題"],
+  ]},
+  { title:"整體滿意度", items:[
+    ["整體滿意度", "整體而言，您對本月內科部課程的滿意度"],
+  ]},
+];
+const LABEL = v => v>=9 ? "非常滿意" : v>=7 ? "滿意" : v>=5 ? "普通" : v>=3 ? "不滿意" : "非常不滿意";
+const BAND  = v => Math.ceil(v/2);   // 1..5
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const chips = (name, list) => list.map(v => `<label><input type="radio" name="${name}" value="${esc(v)}"><span>${esc(v)}</span></label>`).join("");
+
+$("#roleOpts").innerHTML = chips("role", CONFIG.ROLES);
+$("#subOpts").innerHTML = chips("sub", CONFIG.SUBSPECIALTIES);
+
+const ITEMS = [];
+let n = 0;
+$("#sections").innerHTML = SECTIONS.map((sec, si) => `
+  <section class="card">
+    <div class="sec-head"><div class="no">${String(si+2).padStart(2,"0")}</div><h2>${sec.title}</h2></div>
+    <p class="sec-desc">10 分最滿意，1 分最不滿意。</p>
+    ${sec.items.map(([col, title, sub]) => {
+      const key = "q" + (n++); ITEMS.push({key, col});
+      return `<div class="q" data-q="${key}">
+        <div class="q-title"><span class="tagno">${n}</span><span>${esc(title)} <span class="req">*</span>${sub?`<small>${esc(sub)}</small>`:""}</span><span class="picked" id="pk_${key}"></span></div>
+        <div class="scale">${[10,9,8,7,6,5,4,3,2,1].map(v=>`<label><input type="radio" name="${key}" value="${v}" data-band="${BAND(v)}" aria-label="${v} 分 ${LABEL(v)}"><span>${v}</span></label>`).join("")}</div>
+        <div class="bands"><div>非常滿意</div><div>滿意</div><div>普通</div><div>不滿意</div><div>非常不滿意</div></div>
+      </div>`;
+    }).join("")}
+  </section>`).join("");
+$("#lastNo").textContent = String(SECTIONS.length + 2).padStart(2,"0");
+
+/* ---------------- 受訓月份：自動判斷，可往回選 ---------------- */
+function twNow(){ return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Taipei" })); }
+const ym = d => d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0");
+const monthLabel = m => { const [y,mm] = m.split("-"); return `${+y-1911}年${+mm}月`; };
+(function initMonth(){
+  const now = twNow();
+  const base = now.getDate() >= CONFIG.OPEN_DAY ? new Date(now.getFullYear(), now.getMonth(), 1) : new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const params = new URLSearchParams(location.search);
+  const months = [];
+  for (let i = 0; i <= CONFIG.MONTHS_BACK; i++) months.push(ym(new Date(base.getFullYear(), base.getMonth()-i, 1)));
+  const def = params.get("month") && /^\d{4}-\d{2}$/.test(params.get("month")) ? params.get("month") : months[0];
+  if (!months.includes(def)) months.unshift(def);
+  $("#monthSel").innerHTML = months.map(m => `<option value="${m}">${monthLabel(m)}${m===months[0]?"（本次）":""}</option>`).join("");
+  $("#monthSel").value = def;
+  const pill = () => $("#monthPill").textContent = `📅 ${monthLabel($("#monthSel").value)} 課程`;
+  pill(); $("#monthSel").addEventListener("change", pill);
+  // 網址可預先帶入次專科：?sub=感染科
+  const sub = params.get("sub"); if (sub){ const r = document.querySelector(`[name="sub"][value="${CSS.escape(sub)}"]`); if (r) r.checked = true; }
+})();
+
+/* ---------------- 驗證與進度 ---------------- */
+function val(name){
+  const el = document.querySelector(`[name="${name}"]:checked`) || document.querySelector(`[name="${name}"]:not([type=radio])`);
+  return el ? el.value.trim() : "";
+}
+const BASE_REQ = ["name","role","month","sub"];
+const lowScore = () => ITEMS.some(it => { const v = +val(it.key); return v && v <= 4; });
+function required(){
+  const r = [...BASE_REQ, ...ITEMS.map(i=>i.key)];
+  if (lowScore()) r.push("suggest");
+  return r;
+}
+function update(){
+  ITEMS.forEach(it => { const v = +val(it.key); $("#pk_"+it.key).textContent = v ? `${v}・${LABEL(v)}` : ""; });
+  $("#suggestQ").classList.toggle("must", lowScore());
+  const req = required(); let done = 0;
+  req.forEach(k => { const ok = !!val(k); if (ok) done++; const b = document.querySelector(`[data-q="${k}"]`); if (b){ b.classList.toggle("done", ok); if (ok) b.classList.remove("err"); } });
+  $("#fill").style.width = Math.round(done/req.length*100) + "%";
+  $("#ptxt").textContent = `${done} / ${req.length}`;
+}
+$("#form").addEventListener("input", update);
+$("#form").addEventListener("change", update);
+update();
+
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2800); }
+
+/* ---------------- 送出：背景傳送，不必等待 ---------------- */
+$("#form").addEventListener("submit", e => {
+  e.preventDefault();
+  const missing = required().filter(k => !val(k));
+  missing.forEach(k => document.querySelector(`[data-q="${k}"]`)?.classList.add("err"));
+  if (missing.length){
+    toast(missing.includes("suggest") && missing.length === 1 ? "有 4 分以下的項目，請填寫建議" : `還有 ${missing.length} 題必填未完成`);
+    document.querySelector(`[data-q="${missing[0]}"]`).scrollIntoView({behavior:"smooth",block:"center"});
+    return;
+  }
+  const row = {
+    "受訓月份": val("month"),
+    "姓名": val("name"),
+    "職級": val("role"),
+    "當月受訓次專科": val("sub"),
+  };
+  ITEMS.forEach(it => { const v = +val(it.key); row[it.col] = `${v}(${LABEL(v)})`; });
+  row["推薦科優良臨床教師"] = val("teacher");
+  row["推薦理由"] = val("reason");
+  row["建議"] = val("suggest");
+
+  if (CONFIG.GAS_URL){
+    const body = JSON.stringify(row); let sent = false;
+    try{ sent = navigator.sendBeacon && navigator.sendBeacon(CONFIG.GAS_URL, new Blob([body], {type:"text/plain;charset=utf-8"})); }catch(e){}
+    if (!sent) fetch(CONFIG.GAS_URL, { method:"POST", mode:"no-cors", keepalive:true, headers:{"Content-Type":"text/plain;charset=utf-8"}, body })
+      .catch(() => toast("網路不穩，送出可能失敗，請稍後重新填寫"));
+  } else {
+    $("#demoOut").innerHTML = `<p style="font-size:13px;color:var(--muted)">（展示模式：尚未設定 GAS_URL，以下為將寫入試算表的資料）</p><pre class="demo">${esc(JSON.stringify(row,null,2))}</pre>`;
+  }
+  $("#form").style.display = "none"; $("#progress").style.display = "none";
+  $("#doneScreen").style.display = "block"; window.scrollTo({top:0,behavior:"smooth"});
+});
+</script>
+</body>
+</html>
