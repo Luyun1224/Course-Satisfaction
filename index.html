@@ -13,7 +13,7 @@
    ============================================================ */
 const CONFIG = {
   // 部署 Apps Script 後，把網頁應用程式網址貼在這裡；留空 = 展示模式（不送出，只顯示結果）
-  GAS_URL: "",
+  GAS_URL: "https://script.google.com/macros/s/AKfycbzhbZD3AIKnuohDjDMijIR6ZWZ7z7DEhqtP113ESIeYCPO5lizb0eqcSHzUXWg0lFkU/exec",
   // 受訓月份自動判斷：每月 OPEN_DAY 日（含）以後 → 預設「本月」；之前 → 預設「上個月」
   OPEN_DAY: 15,
   // 受訓月份下拉選單可往回選幾個月（補填用）
@@ -38,7 +38,7 @@ body{
     linear-gradient(180deg, #F04E23 0%, #F2711C 22%, #F9A04B 40%, #FBD9B4 58%, #E9F0FA 75%, #DCE7F7 100%);
   background-attachment:fixed;
 }
-.waves{position:fixed;left:0;right:0;bottom:0;height:140px;pointer-events:none;z-index:0}
+.waves{position:fixed;left:0;right:0;bottom:0;width:100%;height:140px;pointer-events:none;z-index:0}
 .wrap{max-width:820px;margin:0 auto;position:relative;z-index:1}
 
 /* ---------- Hero ---------- */
@@ -104,14 +104,32 @@ body{
 .bands div{font-size:11px;font-weight:700;text-align:center;border-top:3px solid;padding-top:3px;color:var(--muted);white-space:nowrap}
 .bands div:nth-child(1){border-color:var(--s5)}.bands div:nth-child(2){border-color:var(--s4)}.bands div:nth-child(3){border-color:var(--s3)}
 .bands div:nth-child(4){border-color:var(--s2)}.bands div:nth-child(5){border-color:var(--s1)}
+.q-title > span:nth-child(2){flex:1;min-width:0}
+.picked:empty{display:none}
 .picked{font-size:13px;font-weight:700;color:var(--blue);margin-left:auto;white-space:nowrap}
-@media (max-width:480px){
-  .scale{gap:3px}.scale span{height:36px;font-size:14px;border-radius:8px}
-  .bands{gap:3px}.bands div{font-size:10px}
+/* 手機：10 個分數改成 5 欄 × 2 列，每欄正好對應一個滿意度區間，按鈕夠大好點 */
+@media (max-width:520px){
+  .scale{grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(2,auto);grid-auto-flow:column;gap:6px}
+  .scale span{height:44px;font-size:17px}
+  .bands{gap:6px}.bands div{font-size:11px}
+  .q-title{flex-wrap:wrap}
+  .picked{width:100%;margin-left:42px}
 }
+@media (max-width:360px){
+  body{padding-left:10px;padding-right:10px}
+  body .progress{margin:0 -10px;padding-left:10px;padding-right:10px}
+  .card{padding:18px 12px;box-shadow:5px 5px 0 var(--navy)}
+  .q{padding:12px 10px}
+  .bands div{font-size:10px;letter-spacing:-.5px}
+  .chips span{padding:6px 11px;font-size:14px}
+}
+/* 大螢幕：卡片稍寬 */
+@media (min-width:1400px){ .wrap{max-width:900px} }
 
 input[type=text],textarea,select{width:100%;font:inherit;font-size:16px;border:2px solid var(--navy);border-radius:10px;padding:10px 12px;background:#fff;color:var(--navy)}
-select{font-weight:700}
+select{font-weight:700;-webkit-appearance:none;appearance:none;padding-right:44px;min-height:48px;cursor:pointer;
+  background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' fill='none' stroke='%230E2A5C' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 16px center}
+select:invalid{color:#8A97AD}
 textarea{min-height:96px;resize:vertical}
 input[type=text]:focus,textarea:focus,select:focus{outline:none;box-shadow:3px 3px 0 var(--orange)}
 .hint{font-size:13px;color:var(--muted);margin-top:6px}
@@ -179,7 +197,7 @@ pre.demo{text-align:left;background:var(--cloud);border:2px solid var(--navy);bo
     </div>
     <div class="q" data-q="sub">
       <div class="q-title"><span>當月受訓次專科 <span class="req">*</span></span></div>
-      <div class="chips" id="subOpts"></div>
+      <select name="sub" id="subSel" required aria-label="當月受訓次專科"></select>
     </div>
   </section>
 
@@ -252,7 +270,8 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":
 const chips = (name, list) => list.map(v => `<label><input type="radio" name="${name}" value="${esc(v)}"><span>${esc(v)}</span></label>`).join("");
 
 $("#roleOpts").innerHTML = chips("role", CONFIG.ROLES);
-$("#subOpts").innerHTML = chips("sub", CONFIG.SUBSPECIALTIES);
+$("#subSel").innerHTML = `<option value="" disabled selected>請選擇次專科</option>` + CONFIG.SUBSPECIALTIES.map(v=>`<option>${esc(v)}</option>`).join("");
+$("#subSel").addEventListener("change", e => e.target.style.color = "");
 
 const ITEMS = [];
 let n = 0;
@@ -288,7 +307,7 @@ const monthLabel = m => { const [y,mm] = m.split("-"); return `${+y-1911}年${+m
   const pill = () => $("#monthPill").textContent = `📅 ${monthLabel($("#monthSel").value)} 課程`;
   pill(); $("#monthSel").addEventListener("change", pill);
   // 網址可預先帶入次專科：?sub=感染科
-  const sub = params.get("sub"); if (sub){ const r = document.querySelector(`[name="sub"][value="${CSS.escape(sub)}"]`); if (r) r.checked = true; }
+  const sub = params.get("sub"); if (sub && CONFIG.SUBSPECIALTIES.includes(sub)) $("#subSel").value = sub;
 })();
 
 /* ---------------- 驗證與進度 ---------------- */
