@@ -297,10 +297,13 @@ function fail(e){ console.error(e); alert("讀取資料失敗：" + e.message); 
 
 function splitTeachers(s){
   if (junk(s)) return [];
-  return String(s).split(/[、,，/／;；&＆+＋\s]+|和|及|跟/)
-    .map(x => x.replace(/(醫師|醫生|老師|主任|副院長|院長|部長|學長|學姊|學姐|VS|vs|教授|大大|大哥|大姐)+$/,"").replace(/^(Dr\.?|dr\.?)/,"").trim())
+  // 任何分隔方式都算：頓號、逗號、空白、斜線、分號、＆、和／及／與／以及／還有，以及英文字（VS、Dr、Fellow、R:…）
+  return String(s)
+    .replace(/[（(][^）)]*[）)]/g, " ")                       // 括號內的註解（例如科別）
+    .split(/[、,，/／;；:：&＆+＋.。\s\n]+|[A-Za-z]+|以及|還有|和|及|與|跟/)
+    .map(x => x.replace(/(醫師們|醫師|醫生|老師|主任|副院長|院長|部長|學長|學姊|學姐|教授|大大|大哥|大姐)+$/,"").trim())
     .map(x => CONFIG.TEACHER_ALIAS[x] || x)
-    .filter(x => /^[一-鿿]{2,4}$/.test(x) && !/^(全部|所有|都很好|大家|每位|皆是|全體|主治)$/.test(x));
+    .filter(x => /^[\u4e00-\u9fff]{2,4}$/.test(x) && !/^(全部|所有|都很好|大家|每位|皆是|全體|主治|無|沒有|謝謝|感謝)$/.test(x));
 }
 function parse(j){
   const H = j.headers, ix = n => H.indexOf(n);
@@ -309,7 +312,7 @@ function parse(j){
   return j.rows.map(r => {
     const sc = iI.map(i => { const m = String(r[i]??"").match(/\d+/); const v = m ? +m[0] : null; return v>=1 && v<=10 ? v : null; });
     return { month:String(r[iM]||"").slice(0,7), role:roleOf(String(r[iRole]||"")), roleRaw:String(r[iRole]||""), sub:String(r[iSub]||"").trim() || "未填",
-      sc, teachers: splitTeachers(String(r[iT]||"")), teacherRaw:String(r[iT]||"").trim(), reason:String(r[iR]||"").trim(), sug:String(r[iS]||"").trim() };
+      sc, teachers: [...new Set(splitTeachers(String(r[iT]||"")))], teacherRaw:String(r[iT]||"").trim(), reason:String(r[iR]||"").trim(), sug:String(r[iS]||"").trim() };
   }).filter(r => /^\d{4}-\d{2}$/.test(r.month));
 }
 
