@@ -21,7 +21,7 @@ const CONFIG = {
   /* 滿意度五等級（雙色發散 + 中性灰） */
   --l5:#1F5BB8; --l4:#7FAEE8; --l3:#B9BFC9; --l2:#F2924F; --l1:#C8372D;
   /* 職級（固定顏色跟著職級走） */
-  --pgy1:#2a78d6; --pgy2:#eb6834; --oth:#8A94A6;
+  --pgy1:#2a78d6; --pgy2:#eb6834; --ugy:#1baf7a; --oth:#8A94A6;
   --up:#1F7A4D; --down:#B4361C;
 }
 *{box-sizing:border-box}
@@ -246,8 +246,8 @@ const BANDS = [
   {n:"不滿意", c:"var(--l2)", fg:"var(--navy)"}, {n:"非常不滿意", c:"var(--l1)", fg:"#fff"},
 ];
 const bandOf = v => v>=9?0 : v>=7?1 : v>=5?2 : v>=3?3 : 4;
-const ROLES = [{k:"PGY1",c:"var(--pgy1)"},{k:"PGY2",c:"var(--pgy2)"},{k:"其他",c:"var(--oth)"}];
-const roleOf = r => /PGY\s*1/i.test(r) ? "PGY1" : /PGY\s*2/i.test(r) ? "PGY2" : "其他";
+const ROLES = [{k:"UGY",c:"var(--ugy)"},{k:"PGY1",c:"var(--pgy1)"},{k:"PGY2",c:"var(--pgy2)"},{k:"其他",c:"var(--oth)"}];
+const roleOf = r => /UGY|實習醫學生|Intern/i.test(r) ? "UGY" : /PGY\s*1/i.test(r) ? "PGY1" : /PGY\s*2/i.test(r) ? "PGY2" : "其他";
 
 /* ======================= 工具 ======================= */
 const $ = s => document.querySelector(s);
@@ -258,7 +258,7 @@ const mL = m => { const [y,mm]=m.split("-"); return `${+y-1911}/${+mm}`; };
 const mLong = m => { const [y,mm]=m.split("-"); return `${+y-1911}年${+mm}月`; };
 const junk = s => !s || /^[\s.。,，、\-—_~～!！?？無沒有nNoOne/aA]*$/.test(s) || /^(無|沒有|none|n\/a|nil|暫無|目前沒有|無意見|沒意見)$/i.test(s.trim());
 
-let RAW = [], state = { from:"", to:"", sub:"", roles:new Set(["PGY1","PGY2","其他"]), teacher:"" };
+let RAW = [], state = { from:"", to:"", sub:"", roles:new Set(["UGY","PGY1","PGY2","其他"]), teacher:"" };
 
 /* ======================= 載入 ======================= */
 function getKey(){ try{ return sessionStorage.getItem("courseDashKey") || ""; }catch(e){ return ""; } }
