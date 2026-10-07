@@ -12,6 +12,8 @@ const CONFIG = {
   GAS_URL: "https://script.google.com/macros/s/AKfycbzhbZD3AIKnuohDjDMijIR6ZWZ7z7DEhqtP113ESIeYCPO5lizb0eqcSHzUXWg0lFkU/exec",
   // 推薦教師姓名的常見錯字／異寫，統一成同一人（左邊寫法 → 右邊寫法）
   TEACHER_ALIAS: { "鐘焜明":"鍾焜明", "林泱翰":"林泱瀚", "楊畯琪":"楊畯棋" },
+  // 熱圖「分數等級」的切點（可自行調整）：≥ 第一個值為優異，依序類推，低於最後一個值為待改善
+  GRADE_CUTS: [9.5, 9.0, 8.5, 8.0],
 };
 </script>
 <style>
@@ -100,6 +102,15 @@ svg text{font-family:"Noto Sans TC",sans-serif}
 .hm .c{border-radius:4px;text-align:center;padding:7px 1px;font-weight:700;font-variant-numeric:tabular-nums;font-size:12px}
 .hm .c.na{background:repeating-linear-gradient(45deg,#eef2f8 0 4px,#f8fafd 4px 8px);color:var(--muted)}
 
+.hm-tools{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.seg{display:inline-flex;border:2px solid var(--navy);border-radius:999px;overflow:hidden}
+.seg button{font:inherit;font-size:12px;font-weight:700;border:none;background:#fff;color:var(--navy);padding:5px 12px;cursor:pointer}
+.seg button.on{background:var(--navy);color:#fff}
+.hm-lg{display:flex;flex-wrap:wrap;gap:4px;font-size:11px;font-weight:700}
+.hm-lg span{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:6px}
+.hm .c.weak{outline:2px dashed #8A94A6;outline-offset:-3px;font-style:italic}
+.hm .rl .few{font-size:10px;font-weight:700;color:#8A94A6;border:1px dashed #8A94A6;border-radius:4px;padding:0 4px;margin-left:2px}
+
 /* teacher */
 .tr{display:grid;grid-template-columns:28px 1fr 40px;gap:8px;align-items:center;padding:6px 4px;border-bottom:1px solid var(--hair);cursor:pointer;font-size:13px}
 .tr:hover,.tr.sel{background:#FFF1E6}
@@ -169,7 +180,11 @@ svg text{font-family:"Noto Sans TC",sans-serif}
 
       <section class="card s12">
         <h2><span class="no">02</span>次專科 × 課程項目</h2>
-        <p class="desc">各次專科在 17 個項目的平均分數（1–10），顏色越深分數越高；份數少於 5 份的列以淡色顯示，參考價值較低。點次專科名稱可篩選。</p>
+        <p class="desc" id="hmDesc"></p>
+        <div class="hm-tools">
+          <div class="seg" id="hmMode" role="group" aria-label="上色方式"><button type="button" data-m="grade" class="on">分數等級</button><button type="button" data-m="diff">與全部平均比較</button></div>
+          <div class="hm-lg" id="hmLegend"></div>
+        </div>
         <div class="scroll-x" id="heatmap"></div>
       </section>
 
@@ -201,8 +216,9 @@ svg text{font-family:"Noto Sans TC",sans-serif}
 
       <section class="card s6">
         <h2><span class="no">07</span>低分回饋追蹤 <span class="badge" id="lowN"></span></h2>
-        <p class="desc">任一項目給 4 分（含）以下的問卷，列出低分項目與學員建議，方便追蹤改善。</p>
+        <p class="desc">任一項目給 4 分（含）以下、且有寫具體建議的問卷，列出低分項目與學員建議，方便追蹤改善。</p>
         <div class="cmlist" id="lowList"></div>
+        <div class="note" id="lowNote" style="margin-top:8px"></div>
       </section>
 
       <section class="card s6">
@@ -397,29 +413,55 @@ function renderTrend(){
 }
 
 /* ---------- 02 熱圖 ---------- */
-function heat(v){
-  if (v==null) return null;
-  const t = Math.max(0, Math.min(1, (v-6)/4));
-  const a=[234,241,251], b=[127,174,232], c=[14,42,92];
-  const mix=(p,q,u)=>p.map((x,i)=>Math.round(x+(q[i]-x)*u));
-  const col = t<.5 ? mix(a,b,t*2) : mix(b,c,(t-.5)*2);
-  return {bg:`rgb(${col})`, fg: t>.6 ? "#fff" : "var(--navy)"};
-}
+// 分數等級：五段，藍＝好、灰＝中間、橘紅＝要注意（雙色發散 + 中性灰）
+const GRADES = () => {
+  const [a,b,c,d] = CONFIG.GRADE_CUTS;
+  return [
+    {min:a,  n:`優異 ≥${a}`,          bg:"#0E2A5C", fg:"#fff"},
+    {min:b,  n:`良好 ${b}–${a}`,       bg:"#5C9BE6", fg:"#fff"},
+    {min:c,  n:`尚可 ${c}–${b}`,       bg:"#E4E8EF", fg:"#0E2A5C"},
+    {min:d,  n:`注意 ${d}–${c}`,       bg:"#F7A35C", fg:"#3A1A05"},
+    {min:-1, n:`待改善 <${d}`,         bg:"#C8372D", fg:"#fff"},
+  ];
+};
+// 與全部平均比較：差距五段
+const DIFFS = [
+  {min: 0.3,  n:"高於平均 ≥0.3",  bg:"#0E2A5C", fg:"#fff"},
+  {min: 0.1,  n:"略高 0.1–0.3",   bg:"#9EC3F0", fg:"#0E2A5C"},
+  {min:-0.1,  n:"持平 ±0.1",      bg:"#F1F3F7", fg:"#0E2A5C"},
+  {min:-0.3,  n:"略低 0.1–0.3",   bg:"#F7B98A", fg:"#3A1A05"},
+  {min:-99,   n:"低於平均 ≥0.3",  bg:"#C8372D", fg:"#fff"},
+];
+const pick = (scale, v) => scale.find(g => v >= g.min - 1e-9);
+let hmMode = "grade";
+document.addEventListener("click", e => {
+  const b = e.target.closest("#hmMode button"); if (!b) return;
+  hmMode = b.dataset.m; document.querySelectorAll("#hmMode button").forEach(x => x.classList.toggle("on", x === b)); renderHeatmap();
+});
 function renderHeatmap(){
   const b = base();
   const subs = [...new Set(b.map(r=>r.sub))].map(s => ({s, rows:b.filter(r=>r.sub===s)})).sort((p,q)=>q.rows.length-p.rows.length);
+  const scale = hmMode === "grade" ? GRADES() : DIFFS;
+  $("#hmLegend").innerHTML = scale.map(g => `<span style="background:${g.bg};color:${g.fg}">${g.n}</span>`).join("");
+  $("#hmDesc").textContent = hmMode === "grade"
+    ? "各次專科在 17 個項目的平均分數（1–10），依分數等級上色：藍色＝好、灰色＝尚可、橘紅＝需要注意。虛線框＝份數少於 5 份，僅供參考。點次專科名稱可篩選。"
+    : "每格與「全部」該項目平均的差距：藍色＝高於全院平均、橘紅＝低於全院平均；格內數字仍是該科平均分數。最適合找出各科相對的弱項。虛線框＝份數少於 5 份。";
   if (!subs.length){ $("#heatmap").innerHTML = `<div class="empty">此條件下沒有資料</div>`; return; }
+  const allMeans = ITEMS.map((_,i) => itemMean(b, i));
   const rowsAll = [...subs, {s:"全部", rows:b, all:true}];
-  let h = `<div class="hm" style="grid-template-columns:120px repeat(${ITEMS.length}, minmax(40px,1fr))"><div></div>` +
+  let h = `<div class="hm" style="grid-template-columns:132px repeat(${ITEMS.length}, minmax(42px,1fr))"><div></div>` +
     ITEMS.map(([,s])=>`<div class="h">${esc(s)}</div>`).join("");
   rowsAll.forEach(({s, rows, all}) => {
-    const weak = rows.length < 5;
-    h += `<div class="rl ${state.sub===s?"sel":""}" ${all?"":`data-sub="${esc(s)}"`} style="${all?"border-top:2px solid var(--navy)":""}">${esc(s)} <small>${rows.length}份</small></div>`;
+    const weak = !all && rows.length < 5;
+    h += `<div class="rl ${state.sub===s?"sel":""}" ${all?"":`data-sub="${esc(s)}"`} style="${all?"border-top:2px solid var(--navy)":""}">${esc(s)} <small>${rows.length}份</small>${weak?'<span class="few">少</span>':""}</div>`;
     ITEMS.forEach(([,lab],i) => {
       const v = itemMean(rows, i);
       if (v==null){ h += `<div class="c na">—</div>`; return; }
-      const c = heat(v);
-      h += `<div class="c" tabindex="0" style="background:${c.bg};color:${c.fg};${weak?"opacity:.45;":""}${all?"outline:2px solid var(--navy);outline-offset:-2px;":""}" data-tip="${esc(`<div class='t'>${s}・${lab}</div>`+tRow(c.bg, fmt(v), `${rows.filter(r=>r.sc[i]!=null).length} 份作答`))}">${v.toFixed(1)}</div>`;
+      const d = v - allMeans[i];
+      const g = hmMode === "grade" || all ? pick(GRADES(), v) : pick(DIFFS, d);
+      const tipTxt = `<div class='t'>${s}・${lab}</div>` + tRow(g.bg, fmt(v), `${rows.filter(r=>r.sc[i]!=null).length} 份作答`) +
+        (all ? "" : `<div>與全部平均 ${d>=0?"+":""}${d.toFixed(2)}</div>`) + `<div>${g.n}</div>`;
+      h += `<div class="c ${weak?"weak":""}" tabindex="0" style="background:${g.bg};color:${g.fg};${all?"box-shadow:inset 0 0 0 2px var(--navy);":""}" data-tip="${esc(tipTxt)}">${v.toFixed(1)}</div>`;
     });
   });
   h += `</div>`;
@@ -506,12 +548,14 @@ function renderReasons(rows){
 
 /* ---------- 07 低分 / 08 建議 ---------- */
 function renderLow(rows){
-  const list = rows.filter(r => r.sc.some(v=>v!=null&&v<=4)).sort((a,b)=>b.month.localeCompare(a.month));
+  const lowAll = rows.filter(r => r.sc.some(v=>v!=null&&v<=4));
+  const list = lowAll.filter(r => !junk(r.sug)).sort((a,b)=>b.month.localeCompare(a.month));
   $("#lowN").textContent = list.length;
+  $("#lowNote").textContent = lowAll.length > list.length ? `另有 ${lowAll.length - list.length} 份低分問卷未填寫建議，未列出。` : "";
   $("#lowList").innerHTML = list.map(r => {
     const lows = ITEMS.map(([,lab],i)=>[lab,r.sc[i]]).filter(([,v])=>v!=null&&v<=4);
     return `<div class="cm warn"><div class="meta">${mLong(r.month)}・${esc(r.sub)}・${esc(r.roleRaw)}</div>
-      <div class="low">${lows.map(([l,v])=>`<span>${esc(l)} ${v}</span>`).join("")}</div>${junk(r.sug) ? `<span style="color:var(--muted)">（未填寫建議）</span>` : esc(r.sug)}</div>`;
+      <div class="low">${lows.map(([l,v])=>`<span>${esc(l)} ${v}</span>`).join("")}</div>${esc(r.sug)}</div>`;
   }).join("") || `<div class="empty">此條件下沒有低分回饋 👍</div>`;
 }
 function renderSug(rows){
