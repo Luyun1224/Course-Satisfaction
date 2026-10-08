@@ -87,8 +87,8 @@ body{
 .chips input:focus-visible + span{outline:3px solid var(--orange);outline-offset:2px}
 
 /* 1–10 量表 */
-.scale{display:grid;grid-template-columns:repeat(10,1fr);gap:5px}
-.scale label{position:relative}
+.scale{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:5px}
+.scale label{position:relative;min-width:0}
 .scale input{position:absolute;opacity:0;pointer-events:none}
 .scale span{display:grid;place-items:center;height:40px;border:2px solid var(--navy);border-radius:10px;background:#fff;font-weight:900;font-size:16px;
   cursor:pointer;user-select:none;transition:transform .08s;font-variant-numeric:tabular-nums}
@@ -107,11 +107,11 @@ body{
 .q-title > span:nth-child(2){flex:1;min-width:0}
 .picked:empty{display:none}
 .picked{font-size:13px;font-weight:700;color:var(--blue);margin-left:auto;white-space:nowrap}
-/* 手機：10 個分數改成 5 欄 × 2 列，每欄正好對應一個滿意度區間，按鈕夠大好點 */
+/* 手機也維持 10 → 1 單排，避免兩列直向排序造成分數跳號的錯覺 */
 @media (max-width:520px){
-  .scale{grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(2,auto);grid-auto-flow:column;gap:6px}
-  .scale span{height:44px;font-size:17px}
-  .bands{gap:6px}.bands div{font-size:11px}
+  .scale{gap:3px}
+  .scale span{height:44px;font-size:clamp(12px,3.4vw,16px);border-radius:7px}
+  .bands{gap:3px}.bands div{font-size:clamp(9px,2.5vw,11px);white-space:normal}
   .q-title{flex-wrap:wrap}
   .picked{width:100%;margin-left:42px}
 }
